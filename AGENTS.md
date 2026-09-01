@@ -11,16 +11,17 @@
 ## 2. Working Tree Authority & Safety (MANDATORY)
 
 The working tree represents the user's active work.
-1. **Inspect First:** Run `git status` and read target files before modifying anything.
-2. **Never Overwrite Blindly:** Use available file-reading tools. Preserve user comments, links, and conventions. Prefer surgical edits over wholesale overwrites.
-3. **No Destructive Git Commands:** Never run `reset --hard`, `clean -fd`, `restore`, `checkout`, `stash`, `rebase`, or `amend` without explicit permission.
-4. **Final Diff Verification:** Before completing work, run `git status` and `git diff` to verify that no unrelated user changes were modified or discarded. Distinguish user changes from agent changes in completion reports.
+1. **Inspect First:** Run `git status` and list/read target directories/files before creating or modifying anything.
+2. **Check for Existing Files:** Before creating any new file, verify whether the file (or a user equivalent) already exists on disk. Never overwrite or re-scaffold user work.
+3. **Never Overwrite Blindly:** Use available file-reading tools. Preserve user comments, links, and conventions. Prefer surgical edits over wholesale overwrites.
+4. **No Destructive Git Commands:** Never run `reset --hard`, `clean -fd`, `restore`, `checkout`, `stash`, `rebase`, or `amend` without explicit permission.
+5. **Final Diff Verification:** Before completing work, run `git status` and `git diff` to verify that no unrelated user changes were modified or discarded. Distinguish user changes from agent changes in completion reports.
 
 ---
 
 ## 3. Architecture & Component Contracts (Progressive Triggers)
 
-- **Read `docs/architecture.md`** before modifying API contracts, changing gRPC/Protobuf definitions, or crossing BFF/Worker/Transmission boundaries.
+- **Mandatory Architecture Review:** Always read `docs/architecture.md` before making any changes affecting API routes, gRPC definitions, database models, directory layouts, or component boundaries.
 - **Read `docs/deployment.md`** before altering networking, Traefik routing, Authelia SSO middleware, or Docker volume bindings.
 - **Stop and Ask:** If an implementation conflicts with documentation or an ambiguous requirement materially affects architecture, stop and ask the user rather than guessing or silently changing the design.
 - **No Speculative Robustness:** Do not add unrequested fallback layers, complex generic abstractions, or future-proofing bloat.

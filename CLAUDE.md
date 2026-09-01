@@ -2,6 +2,7 @@
 
 ## Progressive Context Loading
 - Do not load external rule files for simple localized code edits.
+- Always inspect `git status` and verify existing files on disk before creating or scaffolding new files.
 - Read `AGENTS.md` before making changes affecting database schema, package dependencies, Git state, or cross-component contracts.
 - Read `docs/architecture.md` before modifying API routes, gRPC definitions, or worker state machines.
 - Read `docs/deployment.md` before changing Dockerfiles, Compose services, or Traefik/Authelia configs.
