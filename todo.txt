@@ -1,0 +1,20 @@
+(A) Create SQLAlchemy async engine with SQLite WAL mode pragmas in services/worker/src/worker/db/engine.py +db @worker
+(A) Define DownloadJob ORM model in services/worker/src/worker/db/models.py (id, imdb_id, title, year, magnet_uri, requested_by, status, progress_pct, download_rate_bytes, error_message, created_at, updated_at, completed_at) +db @worker
+(A) Initialize Alembic in services/worker/ and create initial migration for download_jobs table +db @worker
+(A) Write unit tests for DB connection, WAL pragma verification, and CRUD operations in tests/test_db.py +test @worker
+(B) Implement symlink & path-traversal blocker in services/worker/src/worker/sanitizer.py +sanitizer @worker
+(B) Implement file allowlist filtering (video: .mkv, .mp4, .avi, .webm; subtitles: .srt, .vtt, .sub, .ass) +sanitizer @worker
+(B) Implement sample discard (<100MB / 'sample' keyword) and largest primary video selector in sanitizer.py +sanitizer @worker
+(B) Write comprehensive unit tests in tests/test_sanitizer.py covering allowlist, symlinks, sample filtering, and largest video selection +test @worker
+(B) Implement async TMDB client querying /find/{imdb_id}?external_source=imdb_id in services/worker/src/worker/metadata.py +metadata @worker
+(B) Implement normalized token overlap verification between TMDB title/year and torrent/file names in metadata.py +metadata @worker
+(B) Write unit tests with mocked TMDB responses in tests/test_metadata.py verifying successful match and mismatch rejection +test @worker
+(C) Implement Transmission client wrapper in services/worker/src/worker/transmission.py (add_torrent to /data/staging/<job_id>, poll progress, remove_torrent) +transmission @worker
+(C) Write unit tests with mocked transmission-rpc client in tests/test_transmission.py +test @worker
+(C) Implement directory creator and atomic file mover in services/worker/src/worker/relocator.py (/media/movies/<Title> (<Year>) [imdbid-<IMDbID>]/) +relocator @worker
+(C) Implement subtitle renaming and staging cleanup in relocator.py +relocator @worker
+(C) Write unit tests in tests/test_relocator.py testing destination directory formatting, subtitle moving, and scratch cleanup +test @worker
+(D) Implement pipeline state machine coordinator (QUEUED -> DOWNLOADING -> SCANNING -> VERIFYING_METADATA -> ORGANIZING -> COMPLETED/FAILED) in services/worker/src/worker/pipeline.py +pipeline @worker
+(D) Implement startup crash recovery to auto-fail orphaned non-terminal jobs on worker start in pipeline.py +pipeline @worker
+(D) Implement gRPC PipelineServiceServicer in services/worker/src/worker/service.py (SubmitDownload, GetJob, StreamJobStatus, ListJobs) +grpc @worker
+(D) Write integration tests in tests/test_grpc_service.py verifying duplicate rejection, job submission, status querying, and pagination +test @worker
