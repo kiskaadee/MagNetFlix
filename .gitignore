@@ -20,3 +20,4 @@ docs/api_spec.md
 .envrc
 .direnv/
 services/bff/src/bff/magnetflix/v1/
+services/worker/src/worker/magnetflix/v1/
