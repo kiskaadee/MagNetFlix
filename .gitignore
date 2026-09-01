@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[oc]
+build/
+dist/
+*.egg-info
+.venv/
+.ruff_cache/
+.pytest_cache/
+
+# Databases & local state
+*.sqlite3
+*.sqlite3-shm
+*.sqlite3-wal
+data/
+config/
+
+# Generated docs and proto stubs in services (if re-generated on build)
+docs/api_spec.md
+.envrc
+.direnv/
+services/bff/src/bff/magnetflix/v1/
