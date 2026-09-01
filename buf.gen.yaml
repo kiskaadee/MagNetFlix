@@ -1,0 +1,24 @@
+version: v2
+inputs:
+  - directory: proto
+plugins:
+  - remote: buf.build/protocolbuffers/python
+    out: services/worker/src/worker
+  - remote: buf.build/grpc/python
+    out: services/worker/src/worker
+  - remote: buf.build/community/nipunn1313-mypy
+    out: services/worker/src/worker
+  - remote: buf.build/community/nipunn1313-mypy-grpc
+    out: services/worker/src/worker
+  - remote: buf.build/protocolbuffers/python
+    out: services/bff/src/bff
+  - remote: buf.build/grpc/python
+    out: services/bff/src/bff
+  - remote: buf.build/community/nipunn1313-mypy
+    out: services/bff/src/bff
+  - remote: buf.build/community/nipunn1313-mypy-grpc
+    out: services/bff/src/bff
+  - remote: buf.build/community/pseudomuto-doc
+    out: docs
+    opt:
+      - markdown,api_spec.md

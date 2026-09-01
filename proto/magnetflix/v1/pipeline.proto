@@ -1,0 +1,123 @@
+syntax = "proto3";
+
+package magnetflix.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// PipelineService coordinates movie download jobs, safety scans, and library relocation.
+service PipelineService {
+  // SubmitDownload enqueues a new movie download job.
+  // Rejects duplicate submissions if an active job for the same IMDb ID exists or if already in library.
+  rpc SubmitDownload (SubmitDownloadRequest) returns (SubmitDownloadResponse);
+
+  // GetJob retrieves the current status and metadata of a specific job.
+  rpc GetJob (GetJobRequest) returns (GetJobResponse);
+
+  // StreamJobStatus streams real-time status updates.
+  // Semantics: Emits an immediate snapshot of matching active jobs upon connection,
+  // followed by subsequent state and progress change events.
+  rpc StreamJobStatus (StreamJobStatusRequest) returns (stream StreamJobStatusResponse);
+
+  // ListJobs returns a paginated list of download jobs.
+  rpc ListJobs (ListJobsRequest) returns (ListJobsResponse);
+}
+
+// State enumeration of a download job lifecycle.
+enum JobState {
+  JOB_STATE_UNSPECIFIED = 0;
+  JOB_STATE_QUEUED = 1;
+  JOB_STATE_DOWNLOADING = 2;
+  JOB_STATE_SCANNING = 3;
+  JOB_STATE_VERIFYING_METADATA = 4;
+  JOB_STATE_ORGANIZING = 5;
+  JOB_STATE_COMPLETED = 6;
+  JOB_STATE_FAILED = 7;
+}
+
+// Request to submit a new movie download.
+message SubmitDownloadRequest {
+  // Magnet URI of the torrent to fetch.
+  string magnet_uri = 1;
+  // IMDb ID of the movie (e.g., "tt1375666").
+  string imdb_id = 2;
+  // Username of the user requesting the download (from Authelia Remote-User).
+  string requested_by = 3;
+}
+
+// Response acknowledging the job submission.
+message SubmitDownloadResponse {
+  // Unique identifier for the created job.
+  string job_id = 1;
+  // Human-readable message.
+  string message = 2;
+}
+
+// Request to fetch a specific job by ID.
+message GetJobRequest {
+  // Unique job identifier.
+  string job_id = 1;
+}
+
+// Response containing the status of the requested job.
+message GetJobResponse {
+  // The retrieved job details.
+  JobStatus job = 1;
+}
+
+// Request to stream job updates.
+message StreamJobStatusRequest {
+  // Optional job ID to filter updates for a single job; if empty, streams all active jobs.
+  string job_id = 1;
+}
+
+// Real-time job status event stream frame.
+message StreamJobStatusResponse {
+  // Current job status update.
+  JobStatus job = 1;
+}
+
+// Request to list jobs with pagination and state filtering.
+message ListJobsRequest {
+  // Maximum number of jobs to return per page (default: 20, max: 100).
+  int32 page_size = 1;
+  // Page token received from a previous ListJobsResponse next_page_token.
+  string page_token = 2;
+  // Optional filter by job state.
+  JobState state_filter = 3;
+}
+
+// Full status information for a download job.
+message JobStatus {
+  // Unique job ID.
+  string job_id = 1;
+  // IMDb ID.
+  string imdb_id = 2;
+  // Resolved movie title from TMDB (if available).
+  string title = 3;
+  // Resolved release year from TMDB (if available).
+  int32 year = 4;
+  // User who requested the download.
+  string requested_by = 5;
+  // Current state in the pipeline.
+  JobState state = 6;
+  // Download progress percentage (0.0 to 100.0).
+  float progress_pct = 7;
+  // Download speed in bytes per second.
+  int64 download_rate_bytes = 8;
+  // Detailed error message if the job failed.
+  string error_message = 9;
+  // Timestamp when the job was enqueued.
+  google.protobuf.Timestamp created_at = 10;
+  // Timestamp when the job status or progress was last updated.
+  google.protobuf.Timestamp updated_at = 11;
+  // Timestamp when terminal processing finished (COMPLETED or FAILED).
+  google.protobuf.Timestamp completed_at = 12;
+}
+
+// Paginated response containing a list of download jobs.
+message ListJobsResponse {
+  // List of matching jobs for the current page.
+  repeated JobStatus jobs = 1;
+  // Token to retrieve the next page of results, or empty if no more results.
+  string next_page_token = 2;
+}
