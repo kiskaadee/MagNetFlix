@@ -1,0 +1,35 @@
+[project]
+name = "magnetflix-workspace"
+version = "0.1.0"
+description = "Monorepo workspace for MagNetFlix services"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
+
+[tool.uv.workspace]
+members = ["services/*"]
+
+[dependency-groups]
+dev = [
+  "grpc-stubs>=1.53.0.6",
+  "grpcio-tools>=1.83.1",
+  "mypy-protobuf>=5.1.0",
+  "pyright>=1.1.411",
+  "pytest>=8.0.0",
+  "ruff>=0.16.5",
+]
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+extraPaths = ["services/bff/src", "services/worker/src"]
+include = ["services"]
+exclude = ["**/__pycache__", "services/**/magnetflix/"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+extend-exclude = ["services/**/magnetflix/"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
