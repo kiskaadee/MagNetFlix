@@ -1,7 +1,7 @@
-(A) Create SQLAlchemy async engine with SQLite WAL mode pragmas in services/worker/src/worker/db/engine.py +db @worker
-(A) Define DownloadJob ORM model in services/worker/src/worker/db/models.py (id, imdb_id, title, year, magnet_uri, requested_by, status, progress_pct, download_rate_bytes, error_message, created_at, updated_at, completed_at) +db @worker
-(A) Initialize Alembic in services/worker/ and create initial migration for download_jobs table +db @worker
-(A) Write unit tests for DB connection, WAL pragma verification, and CRUD operations in tests/test_db.py +test @worker
+x 2026-10-13 (A) Create SQLAlchemy async engine with SQLite WAL mode pragmas in services/worker/src/worker/db/engine.py +db @worker
+x 2026-10-13 (A) Define DownloadJob ORM model in services/worker/src/worker/db/models.py (id, imdb_id, title, year, magnet_uri, requested_by, status, progress_pct, download_rate_bytes, error_message, created_at, updated_at, completed_at) +db @worker
+x 2026-10-13 (A) Initialize Alembic in services/worker/ and create initial migration for download_jobs table +db @worker
+x 2026-10-13 (A) Write unit tests for DB connection, WAL pragma verification, and CRUD operations in tests/test_db.py +test @worker
 (B) Implement symlink & path-traversal blocker in services/worker/src/worker/sanitizer.py +sanitizer @worker
 (B) Implement file allowlist filtering (video: .mkv, .mp4, .avi, .webm; subtitles: .srt, .vtt, .sub, .ass) +sanitizer @worker
 (B) Implement sample discard (<100MB / 'sample' keyword) and largest primary video selector in sanitizer.py +sanitizer @worker
