@@ -24,7 +24,7 @@ services:
       - magnetflix_internal
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.magnetflix.rule=Host(`addmovie.arch-services.mywire.org`)"
+      - "traefik.http.routers.magnetflix.rule=Host(`addmovie.roadtotech.me`)"
       - "traefik.http.routers.magnetflix.entrypoints=websecure"
       - "traefik.http.routers.magnetflix.tls.certresolver=letsencrypt"
       - "traefik.http.routers.magnetflix.middlewares=authelia@docker"
@@ -42,6 +42,7 @@ services:
       - DATABASE_URL=sqlite:////data/magnetflix.sqlite3
       - STAGING_DIR=/data/staging
       - MEDIA_DIR=/media/movies
+      - TMDB_API_KEY=${TMDB_API_KEY}
     volumes:
       - ./data:/data
       - /mnt/storage/media/movies:/media/movies
@@ -58,7 +59,7 @@ services:
       - TZ=America/Chicago
     volumes:
       - ./config/transmission:/config
-      - ./data/staging:/downloads
+      - ./data/staging:/data/staging
     networks:
       - magnetflix_internal
 
@@ -73,7 +74,7 @@ networks:
 
 ## 🔐 Authelia SSO Integration
 
-When a user visits `addmovie.arch-services.mywire.org`:
+When a user visits `addmovie.roadtotech.me`:
 1. Traefik triggers the `authelia@docker` forward-auth middleware.
 2. If unauthenticated, Authelia redirects the user to the login portal.
 3. Upon authentication, Authelia injects headers into the forwarded request:

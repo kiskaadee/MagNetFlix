@@ -62,8 +62,9 @@ stateDiagram-v2
 ### Transition & Failure Invariants
 1. **Linear Progression**: `QUEUED` ➔ `DOWNLOADING` ➔ `SCANNING` ➔ `VERIFYING_METADATA` ➔ `ORGANIZING` ➔ `COMPLETED`.
 2. **Terminal Failure**: Any failure at any phase transitions the job directly to `FAILED` with a populated `error_message`.
-3. **Crash & Restart Recovery**: Upon worker startup, any orphaned non-terminal jobs (`QUEUED`, `DOWNLOADING`, `SCANNING`, `VERIFYING_METADATA`, `ORGANIZING`) in the SQLite database are automatically transitioned to `FAILED` with reason `"Worker restarted during execution"`. Retrying requires a new submission.
-4. **Duplicate Rejection (Idempotency)**:
+3. **Stalled Download Timeout**: If a torrent achieves zero progress (0 bytes downloaded or unresolved magnet metadata) for 15 consecutive minutes, the job transitions to `FAILED` with reason `"Download stalled: no seeds or metadata timeout"`.
+4. **Crash & Restart Recovery**: Upon worker startup, any orphaned non-terminal jobs (`QUEUED`, `DOWNLOADING`, `SCANNING`, `VERIFYING_METADATA`, `ORGANIZING`) in the SQLite database are automatically transitioned to `FAILED` with reason `"Worker restarted during execution"`. Retrying requires a new submission.
+5. **Duplicate Rejection (Idempotency)**:
    - A submission is rejected if a non-terminal job for the same `imdb_id` is currently active in the database.
    - A submission is rejected if `/media/movies/*[imdbid-{imdb_id}]` already exists in the destination library.
 
@@ -95,7 +96,7 @@ The sanitizer enforces a strict file-system boundary before files are touched or
 
 ---
 
-## 📂 Storage Paths & Naming Convention
+## 📂 Storage Paths & Two-Stage Atomic Relocation
 
 - **Canonical Staging Path**: `/data/staging/<job_id>/`
 - **Canonical Library Destination**:
@@ -103,7 +104,12 @@ The sanitizer enforces a strict file-system boundary before files are touched or
   /media/movies/<Title> (<Year>) [imdbid-<IMDbID>]/<Title> (<Year>).<ext>
   /media/movies/<Title> (<Year>) [imdbid-<IMDbID>]/<Title> (<Year>).en.srt
   ```
-- **Cleanup**: The `/data/staging/<job_id>/` folder is purged immediately upon successful completion or terminal failure.
+- **Two-Stage Atomic Relocation (Cross-Volume Safe)**:
+  1. *Stage 1 (Transfer)*: Validated files are copied from `/data/staging/<job_id>/` to a temporary directory on the library mount: `/media/movies/.staging_<job_id>/` using `shutil.copy2`.
+  2. *Stage 2 (Atomic Swap)*: Once copying completes and file integrity is verified, `os.replace` atomically renames `/media/movies/.staging_<job_id>/` to the final `/media/movies/<Title> (<Year>) [imdbid-<IMDbID>]/` directory. This prevents Jellyfin/Plex from indexing partially-copied media.
+- **Cleanup**:
+  - The scratch directory `/data/staging/<job_id>/` is purged immediately upon successful completion or terminal failure.
+  - The torrent session is removed from Transmission daemon via RPC `remove_torrent(id, delete_data=True)` to prevent lingering memory/network leaks.
 
 ---
 

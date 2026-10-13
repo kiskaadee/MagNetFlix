@@ -31,14 +31,14 @@ sequenceDiagram
     participant Engine as Transmission Daemon
     participant Media as Jellyfin / Plex Library
 
-    User->>Traefik: GET addmovie.arch-services.mywire.org
+    User->>Traefik: GET addmovie.roadtotech.me
     Traefik->>User: Renders MagNetFlix Web Form
     User->>Traefik: Submit form (magnet URI + IMDb ID: tt1375666)
     Traefik->>BFF: POST /api/v1/downloads (includes Remote-User header)
     BFF->>Worker: gRPC SubmitDownload(magnet, imdb_id, user)
     Worker-->>BFF: Acknowledged (Job ID: job-42)
     BFF-->>User: Enqueued! Showing live progress
-    Worker->>Engine: Start torrent download in /tmp/staging/job-42
+    Worker->>Engine: Start torrent download in /data/staging/job-42
     Engine-->>Worker: Download Completed
     Worker->>Worker: Run Security Whitelist Scan (Purge .exe/.bat)
     Worker->>Worker: Verify IMDb metadata & rename files
