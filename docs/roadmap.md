@@ -34,7 +34,7 @@ gantt
 ---
 
 ## 📌 Phase 2: Pipeline Worker & Security Engine
-- [ ] Set up SQLite with WAL mode via SQLAlchemy 2.0 and Alembic migrations.
+- [x] Set up SQLite with WAL mode via SQLAlchemy 2.0 and Alembic migrations.
 - [ ] Implement Transmission daemon RPC client wrapper.
 - [ ] Implement isolated scratch staging (`/data/staging/<job_id>`).
 - [ ] Build **Media Sanitizer & Allowlist**:
@@ -68,6 +68,6 @@ gantt
 ## 📌 Phase 4: Containerization & Traefik Integration
 - [ ] Create multi-stage `Dockerfile` for `bff` and `worker`.
 - [ ] Create production-ready `docker-compose.yml` including Transmission daemon and shared volumes.
-- [ ] Configure Traefik labels for `addmovie.arch-services.mywire.org` with Authelia middleware.
+- [ ] Configure Traefik labels for `addmovie.roadtotech.me` with Authelia middleware.
 - [ ] Configure health and readiness probes (`/healthz`, gRPC health service).
 - [ ] **Phase 4 Tests**: Full end-to-end dry-run with a public domain torrent.

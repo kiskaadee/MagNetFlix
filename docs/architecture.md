@@ -9,12 +9,13 @@ MagNetFlix uses a **Backend-For-Frontend (BFF)** pattern paired with an internal
 ```mermaid
 flowchart TB
     subgraph Edge ["🌐 Public Edge (Protected)"]
-        Browser["User Browser"] -->|HTTPS| Traefik["Traefik Reverse Proxy"]
+        Browser["User Browser\n(Web UI)"] -->|HTTPS| Traefik["Traefik Reverse Proxy"]
+        Extension["Browser Extension\n(One-Click Magnet Hook)"] -->|HTTPS| Traefik
         Traefik <-->|Forward Auth| Authelia["Authelia SSO"]
     end
 
     subgraph InternalServices ["🛡️ Internal Services (Docker Network)"]
-        Traefik -->|HTTP + Remote-User| BFF["FastAPI BFF Gateway"]
+        Traefik -->|HTTP + Remote-User| BFF["FastAPI BFF Gateway\n(Serves Web UI + API)"]
         
         subgraph WorkerApp ["Worker Service"]
             BFF -->|gRPC / Stream| Worker["gRPC Pipeline Server"]
@@ -32,6 +33,8 @@ flowchart TB
         StorageMgr --> FinalMedia[("/media/movies (Jellyfin/Plex Library)")]
     end
 ```
+
+> For foundational design trade-offs and decisions, see [ADR 001: Pipeline Safety, Storage Boundaries, and BFF Dual-Client Architecture](adr/001-pipeline-safety-and-bff-dual-client.md).
 
 ---
 
@@ -110,6 +113,28 @@ The sanitizer enforces a strict file-system boundary before files are touched or
 - **Cleanup**:
   - The scratch directory `/data/staging/<job_id>/` is purged immediately upon successful completion or terminal failure.
   - The torrent session is removed from Transmission daemon via RPC `remove_torrent(id, delete_data=True)` to prevent lingering memory/network leaks.
+
+---
+
+## 🌐 Dual-Client Gateway & Ingestion Contract
+
+The FastAPI BFF acts as a unified gateway serving two distinct frontends:
+
+1. **Hosted Web UI (`addmovie.roadtotech.me`)**:
+   - Directly served by the FastAPI application as a single-origin web interface.
+   - Embeds interactive movie search (with autocomplete, poster previews, and year badges) and a magnet link submission form.
+   - Establishes a Server-Sent Events (SSE) connection (`/api/v1/movies/events`) to stream real-time pipeline status updates without polling.
+2. **Companion WebExtension (`magnetflix-extension`)**:
+   - Injects magnet link interception on third-party torrent indexers.
+   - Submits captured magnet URIs and selected IMDb IDs directly to the BFF.
+
+### Route & Payload Compatibility
+To support both the web UI and the browser extension without code divergence:
+* **Dual Route Bindings**: The BFF mounts both `POST /api/v1/downloads` (canonical REST) and `POST /download` (extension alias).
+* **Validation Aliases**: Pydantic schemas accept payload fields interchangeably:
+  * Magnet URI: `magnet_uri` (canonical) or `magnet` (extension)
+  * IMDb ID: `imdb_id` (canonical) or `imdbid` (extension)
+* **Identity Injection**: The BFF extracts authenticated user identity from the Traefik `Remote-User` header. In local testing or extension environments where SSO headers are absent, a configurable fallback (`local_user`) is applied.
 
 ---
 
