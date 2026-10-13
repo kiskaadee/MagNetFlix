@@ -7,7 +7,7 @@ requires-python = ">=3.12"
 dependencies = [
   "aiosqlite>=0.20.0",
   "alembic>=1.14.0",
-  "cinemagoer>=2023.5.1",
+  "httpx>=0.28.0",
   "grpcio>=1.83.1",
   "protobuf>=7.36.1",
   "pydantic>=2.10.0",

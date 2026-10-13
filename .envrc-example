@@ -1,1 +1,4 @@
 use flake
+
+# TMDB API Key for movie metadata verification
+export TMDB_API_KEY=""
