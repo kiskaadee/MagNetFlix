@@ -1,33 +1,40 @@
 # 🎬 MagNetFlix
 
-> Automated, secure movie fetching and library organization pipeline via gRPC, Transmission, and Traefik/Authelia SSO.
+> Self-hosted, automated media acquisition and library organization pipeline built with **FastAPI (BFF)**, **gRPC**, **SQLite WAL**, **Transmission RPC**, and **pluggable SSO/OIDC authentication**.
 
 ---
 
 ## 📖 Table of Contents
 
-- [Overview](docs/overview.md) - Project mission, key features, and user workflow.
-- [Architecture](docs/architecture.md) - System design, BFF pattern, gRPC contracts, and data flow.
-- [Development Rules & Agent Guidelines](AGENTS.md) - Coding standards, monorepo conventions, and toolchain rules.
-- [Roadmap](docs/roadmap.md) - Milestone-by-milestone development plan.
-- [Deployment Guide](docs/deployment.md) - Docker Compose, Traefik integration, and Authelia SSO setup.
+- [Overview](docs/overview.md) — Mission, user workflow, and features.
+- [Architecture](docs/architecture.md) — System design, state machine, security boundaries, and storage invariants.
+- [Reconciled Roadmap](docs/roadmap.md) — Dependency-ordered implementation milestones.
+- [Deployment Guide](docs/deployment.md) — Docker Compose topology, volume mounts, and SSO identity adapter.
+- [Architecture Decision Records](docs/adr/) — Canonical records of design choices, tradeoffs, and invariants:
+  - [ADR 001: Pipeline Safety, Storage Boundaries, and BFF Dual-Client Architecture](docs/adr/001-pipeline-safety-and-bff-dual-client.md)
+  - [ADR 002: Pipeline Invariants, Two-Stage Metadata, and Active Reconciliation](docs/adr/002-pipeline-invariants-and-active-reconciliation.md)
+- [Historical Audit Ledger](docs/history/phase-a-current-state-audit.md) — Phase A current-state audit and portfolio assessment.
+- [Development Rules & Agent Guidelines](AGENTS.md) — Code quality standards, safety rules, and workspace invariants.
 
 ---
 
 ## ⚡ Quick Start
 
 ```bash
-# Enter hermetic dev shell (Nix)
+# 1. Enter hermetic dev shell (Nix)
 nix develop
 
-# Or install dependencies with uv workspace
+# 2. Or install dependencies with uv workspace
 uv sync
 
-# Generate protobuf stubs
+# 3. Generate protobuf stubs & documentation
 make generate
 
-# Start full local stack with docker compose
-docker compose up -d
+# 4. Run test suite
+uv run pytest
+
+# 5. Run static type checking and linters
+make check
 ```
 
 ---
@@ -36,28 +43,26 @@ docker compose up -d
 
 ```text
 .
-├── AGENTS.md                  # Development guidelines & rules for AI/human contributors
-├── Makefile                   # High-level build & generation commands
+├── AGENTS.md                  # Development guidelines & safety invariants
+├── CLAUDE.md                  # Developer CLI commands & tool directives
+├── Makefile                   # High-level build, codegen, lint, and test targets
 ├── README.md                  # Project landing page
-├── buf.gen.yaml               # Buf remote plugin generation config
-├── buf.yaml                   # Buf module definition
-├── docker-compose.yml         # Local development & production compose stack
-├── docs/                      # Detailed system documentation
-│   ├── architecture.md        # Architecture & component interactions
-│   ├── deployment.md          # Traefik & Authelia deployment guide
+├── buf.gen.yaml               # Buf code generation configuration
+├── buf.yaml                   # Buf module configuration
+├── docker-compose.yml         # Multi-container Compose stack specification
+├── docs/                      # Authoritative architecture and operations documentation
+│   ├── adr/                   # Architecture Decision Records (ADRs)
+│   ├── history/               # Audit logs and review ledgers
+│   ├── architecture.md        # System design, data flow, and invariants
+│   ├── deployment.md          # Container topology and reverse proxy integration
 │   ├── overview.md            # Feature overview & workflow
-│   └── roadmap.md             # Development milestones
+│   └── roadmap.md             # 5-Milestone implementation plan
 ├── proto/                     # Protocol Buffer definitions
 │   └── magnetflix/v1/
 │       └── pipeline.proto
-└── services/
-    ├── bff/                   # FastAPI Web Gateway / HTML Form / Authelia SSO
-    │   ├── Dockerfile
-    │   ├── pyproject.toml
-    │   └── src/bff/
-    └── worker/                # gRPC Pipeline Worker & Transmission Coordinator
-        ├── Dockerfile
-        ├── alembic/
-        ├── pyproject.toml
-        └── src/worker/
+├── services/
+│   ├── bff/                   # FastAPI Web Gateway / HTML Form / Pluggable SSO
+│   ├── contracts/             # Shared Protobuf & gRPC contracts package
+│   └── worker/                # gRPC Pipeline Worker & Transmission Coordinator
+└── tests/                     # Unit and integration test suites
 ```

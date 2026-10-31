@@ -1,20 +1,38 @@
-x 2026-10-13 (A) Create SQLAlchemy async engine with SQLite WAL mode pragmas in services/worker/src/worker/db/engine.py +db @worker
-x 2026-10-13 (A) Define DownloadJob ORM model in services/worker/src/worker/db/models.py (id, imdb_id, title, year, magnet_uri, requested_by, status, progress_pct, download_rate_bytes, error_message, created_at, updated_at, completed_at) +db @worker
-x 2026-10-13 (A) Initialize Alembic in services/worker/ and create initial migration for download_jobs table +db @worker
-x 2026-10-13 (A) Write unit tests for DB connection, WAL pragma verification, and CRUD operations in tests/test_db.py +test @worker
-(B) Implement symlink & path-traversal blocker in services/worker/src/worker/sanitizer.py +sanitizer @worker
-(B) Implement file allowlist filtering (video: .mkv, .mp4, .avi, .webm; subtitles: .srt, .vtt, .sub, .ass) +sanitizer @worker
-(B) Implement sample discard (<100MB / 'sample' keyword) and largest primary video selector in sanitizer.py +sanitizer @worker
-(B) Write comprehensive unit tests in tests/test_sanitizer.py covering allowlist, symlinks, sample filtering, and largest video selection +test @worker
-(B) Implement async TMDB client querying /find/{imdb_id}?external_source=imdb_id in services/worker/src/worker/metadata.py +metadata @worker
-(B) Implement normalized token overlap verification between TMDB title/year and torrent/file names in metadata.py +metadata @worker
-(B) Write unit tests with mocked TMDB responses in tests/test_metadata.py verifying successful match and mismatch rejection +test @worker
-(C) Implement Transmission client wrapper in services/worker/src/worker/transmission.py (add_torrent to /data/staging/<job_id>, poll progress, remove_torrent) +transmission @worker
+# Milestone 1: Contracts, Toolchain & Database Hardening (Prerequisites & Blockers)
+(A) Create services/contracts workspace package with pyproject.toml (module-name = 'magnetflix') +contracts @workspace
+(A) Reconfigure buf.gen.yaml to output stubs into services/contracts/src, generate stubs + docs/api_spec.md, and track in Git +proto @contracts
+(A) Update services/worker and services/bff to depend on magnetflix-contracts via workspace dependency +deps @workspace
+(A) Update pyproject.toml to include tests/ in pyright, remove exclusions masking broken imports, and add test rule to Makefile +ci @workspace
+(A) Update services/worker/Dockerfile and services/bff/Dockerfile to copy services/contracts, and copy alembic/ into worker image +docker @deploy
+(A) Create Alembic migration 002_add_info_hash_and_partial_unique_index.py adding info_hash column and uq_download_jobs_active_imdb_id index +db @worker
+(A) Update DownloadJob ORM model and write unit tests in tests/test_db.py verifying duplicate active insertion rejection +test @worker
+
+# Milestone 2: Pipeline Domain Engine & Filesystem Safety
+(B) Implement Two-Tier Media Sanitizer in services/worker/src/worker/sanitizer.py (hard-fail on symlinks/traversal/executables, ignore .txt/.nfo, sample discard, largest video selector) +sanitizer @worker
+(B) Write comprehensive unit tests in tests/test_sanitizer.py covering allowlist, traversal, sample filtering, and largest video selection +test @worker
+(B) Implement TMDB Client & Token Verifier in services/worker/src/worker/metadata.py (early ingestion resolution via /find/{imdb_id} and post-download token overlap check) +metadata @worker
+(B) Write unit tests with mocked TMDB responses in tests/test_metadata.py verifying match, 404, non-movie rejection, and token overlap +test @worker
+(B) Implement Multi-Track Library Relocator in services/worker/src/worker/relocator.py (format preservation for .srt/.vtt/.ass, language/disambiguation tagging, two-stage atomic directory swap) +relocator @worker
+(B) Write unit tests in tests/test_relocator.py testing destination directory formatting, subtitle moving, and atomic swap cleanup +test @worker
+
+# Milestone 3: Transmission Integration & Worker Coordinator
+(C) Implement Transmission client wrapper in services/worker/src/worker/transmission.py (add_torrent to /data/staging/<job_id>, poll progress, remove_torrent with delete_data) +transmission @worker
 (C) Write unit tests with mocked transmission-rpc client in tests/test_transmission.py +test @worker
-(C) Implement directory creator and atomic file mover in services/worker/src/worker/relocator.py (/media/movies/<Title> (<Year>) [imdbid-<IMDbID>]/) +relocator @worker
-(C) Implement subtitle renaming and staging cleanup in relocator.py +relocator @worker
-(C) Write unit tests in tests/test_relocator.py testing destination directory formatting, subtitle moving, and scratch cleanup +test @worker
-(D) Implement pipeline state machine coordinator (QUEUED -> DOWNLOADING -> SCANNING -> VERIFYING_METADATA -> ORGANIZING -> COMPLETED/FAILED) in services/worker/src/worker/pipeline.py +pipeline @worker
-(D) Implement startup crash recovery to auto-fail orphaned non-terminal jobs on worker start in pipeline.py +pipeline @worker
-(D) Implement gRPC PipelineServiceServicer in services/worker/src/worker/service.py (SubmitDownload, GetJob, StreamJobStatus, ListJobs) +grpc @worker
-(D) Write integration tests in tests/test_grpc_service.py verifying duplicate rejection, job submission, status querying, and pagination +test @worker
+(C) Implement pipeline state machine coordinator in services/worker/src/worker/pipeline.py (linear transitions, 15-min stall timeout, bounded ThreadPoolExecutor offloading, in-memory pub/sub queues) +pipeline @worker
+(C) Implement startup active reconciliation sweep in pipeline.py (auto-fail orphaned jobs, remove Transmission torrents, purge staging disks) +pipeline @worker
+(C) Implement gRPC PipelineServiceServicer in services/worker/src/worker/service.py and entrypoint worker/main.py (SubmitDownload, GetJob, StreamJobStatus, ListJobs) +grpc @worker
+(C) Write integration tests in tests/test_grpc_service.py verifying duplicate rejection, job submission, status querying, and pagination +test @worker
+
+# Milestone 4: FastAPI BFF Gateway, SSE & Web UI
+(D) Implement Pluggable Identity Adapter Middleware in FastAPI BFF (env-driven header extraction with local_user dev fallback) +auth @bff
+(D) Implement BFF gRPC client wrapper in services/bff/src/bff/grpc_client.py connecting to Worker service +grpc @bff
+(D) Implement REST endpoints in services/bff/src/bff/main.py (dual routes POST /api/v1/downloads and POST /download with Pydantic aliases, GET /api/v1/movies/search TMDB proxy) +api @bff
+(D) Implement Server-Sent Events stream GET /api/v1/movies/events connected to gRPC StreamJobStatus +sse @bff
+(D) Embed single-origin HTML Web UI dashboard in services/bff/src/bff/templates/ and static/ with movie search autocomplete, poster previews, and live progress bars +ui @bff
+(D) Write API tests in tests/test_bff_routes.py covering auth extraction, dual routes, search proxy, and SSE streams +test @bff
+
+# Milestone 5: Multi-Container Stack & Deployment Verification
+(E) Finalize services/worker/Dockerfile and services/bff/Dockerfile multi-stage production builds +docker @deploy
+(E) Author canonical production-ready docker-compose.yml including bff, worker, transmission, volume mounts, and network bridges +compose @deploy
+(E) Configure Traefik routing labels, health probes (/healthz and gRPC health), and verify container communication +traefik @deploy
+(E) Execute end-to-end integration test with public domain torrent verifying full acquisition, organization, and SSE reporting lifecycle +e2e @test
