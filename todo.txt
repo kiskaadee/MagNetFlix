@@ -4,8 +4,8 @@ x 2026-10-31 (A) Reconfigure buf.gen.yaml to output stubs into services/contract
 x 2026-10-31 (A) Update services/worker and services/bff to depend on magnetflix-contracts via workspace dependency +deps @workspace
 x 2026-10-31 (A) Update pyproject.toml to include tests/ in pyright, remove exclusions masking broken imports, and add test rule to Makefile +ci @workspace
 x 2026-10-31 (A) Update services/worker/Dockerfile and services/bff/Dockerfile to copy services/contracts, and copy alembic/ into worker image +docker @deploy
-(A) Create Alembic migration 002_add_info_hash_and_partial_unique_index.py adding info_hash column and uq_download_jobs_active_imdb_id index +db @worker
-(A) Update DownloadJob ORM model and write unit tests in tests/test_db.py verifying duplicate active insertion rejection +test @worker
+x 2026-10-31 (A) Create Alembic migration 002_add_info_hash_and_partial_unique_index.py adding info_hash column and uq_download_jobs_active_imdb_id index +db @worker
+x 2026-10-31 (A) Update DownloadJob ORM model and write unit tests in tests/test_db.py verifying duplicate active insertion rejection +test @worker
 
 # Milestone 2: Pipeline Domain Engine & Filesystem Safety
 (B) Implement Two-Tier Media Sanitizer in services/worker/src/worker/sanitizer.py (hard-fail on symlinks/traversal/executables, ignore .txt/.nfo, sample discard, largest video selector) +sanitizer @worker

@@ -212,3 +212,103 @@ async def test_active_job_idempotency_query(temp_db):
         res_comp = await session.execute(stmt_comp)
         found_completed = res_comp.scalar_one_or_none()
         assert found_completed is None
+
+
+@pytest.mark.asyncio
+async def test_download_job_info_hash_extraction_and_persistence(temp_db):
+    """Test extraction and database persistence of info_hash from magnet URI."""
+    session_factory, _ = temp_db
+
+    # 1. Automatic BTIH extraction and lowercasing
+    magnet = "magnet:?xt=urn:btih:4A5B6C7D8E9F1234567890ABCDEF1234567890AB&dn=Inception"
+    job = DownloadJob(
+        imdb_id="tt1375666",
+        magnet_uri=magnet,
+        requested_by="alice",
+    )
+    assert job.info_hash == "4a5b6c7d8e9f1234567890abcdef1234567890ab"
+
+    # 2. Persistence and query by info_hash
+    async with session_factory() as session:
+        session.add(job)
+        await session.commit()
+
+    async with session_factory() as session:
+        result = await session.execute(
+            select(DownloadJob).where(
+                DownloadJob.info_hash == "4a5b6c7d8e9f1234567890abcdef1234567890ab"
+            )
+        )
+        saved = result.scalar_one()
+        assert saved.id == job.id
+        assert saved.info_hash == "4a5b6c7d8e9f1234567890abcdef1234567890ab"
+
+
+@pytest.mark.asyncio
+async def test_active_job_partial_unique_constraint(temp_db):
+    """Verify that SQLite partial index rejects concurrent active jobs for same imdb."""
+    from sqlalchemy.exc import IntegrityError
+
+    session_factory, _ = temp_db
+
+    # 1. Insert first active job
+    job1 = DownloadJob(
+        imdb_id="tt9999999",
+        magnet_uri="magnet:?xt=urn:btih:hash111111111111111111111111111111111111",
+        requested_by="alice",
+        state=JobStateEnum.QUEUED.value,
+    )
+    async with session_factory() as session:
+        session.add(job1)
+        await session.commit()
+
+    # 2. Inserting a second active job for the same imdb_id must raise IntegrityError
+    job2 = DownloadJob(
+        imdb_id="tt9999999",
+        magnet_uri="magnet:?xt=urn:btih:hash222222222222222222222222222222222222",
+        requested_by="bob",
+        state=JobStateEnum.DOWNLOADING.value,
+    )
+    with pytest.raises(IntegrityError):
+        async with session_factory() as session:
+            session.add(job2)
+            await session.commit()
+
+    # 3. Mark job1 as COMPLETED; inserting a new active job for tt9999999 must succeed
+    async with session_factory() as session:
+        result = await session.execute(
+            select(DownloadJob).where(DownloadJob.id == job1.id)
+        )
+        loaded_job1 = result.scalar_one()
+        loaded_job1.state = JobStateEnum.COMPLETED.value
+        await session.commit()
+
+    job3 = DownloadJob(
+        imdb_id="tt9999999",
+        magnet_uri="magnet:?xt=urn:btih:hash333333333333333333333333333333333333",
+        requested_by="charlie",
+        state=JobStateEnum.QUEUED.value,
+    )
+    async with session_factory() as session:
+        session.add(job3)
+        await session.commit()
+
+    # 4. Mark job3 as FAILED; inserting another active job for tt9999999 must succeed
+    async with session_factory() as session:
+        result = await session.execute(
+            select(DownloadJob).where(DownloadJob.id == job3.id)
+        )
+        loaded_job3 = result.scalar_one()
+        loaded_job3.state = JobStateEnum.FAILED.value
+        await session.commit()
+
+    job4 = DownloadJob(
+        imdb_id="tt9999999",
+        magnet_uri="magnet:?xt=urn:btih:hash444444444444444444444444444444444444",
+        requested_by="dave",
+        state=JobStateEnum.QUEUED.value,
+    )
+    async with session_factory() as session:
+        session.add(job4)
+        await session.commit()
+        assert job4.id is not None
