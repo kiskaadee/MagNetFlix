@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import uuid
 from datetime import datetime, timezone
 from enum import Enum
@@ -9,7 +10,7 @@ from typing import Any
 
 from google.protobuf.timestamp_pb2 import Timestamp
 from magnetflix.v1 import pipeline_pb2
-from sqlalchemy import BigInteger, DateTime, Float, Integer, String, Text
+from sqlalchemy import BigInteger, DateTime, Float, Index, Integer, String, Text, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -81,10 +82,26 @@ def utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def extract_info_hash(magnet_uri: str) -> str | None:
+    """Extract and lowercase the BTIH info-hash from a BitTorrent magnet URI."""
+    match = re.search(r"urn:btih:([a-zA-Z0-9]+)", magnet_uri, re.IGNORECASE)
+    if match:
+        return match.group(1).lower()
+    return None
+
+
 class DownloadJob(Base):
     """ORM model representing an acquisition and relocation pipeline job."""
 
     __tablename__ = "download_jobs"
+    __table_args__ = (
+        Index(
+            "uq_download_jobs_active_imdb_id",
+            "imdb_id",
+            unique=True,
+            sqlite_where=text("state NOT IN ('COMPLETED', 'FAILED')"),
+        ),
+    )
 
     id: Mapped[str] = mapped_column(
         String(36),
@@ -112,6 +129,12 @@ class DownloadJob(Base):
         Text,
         nullable=False,
         doc="BitTorrent magnet URI",
+    )
+    info_hash: Mapped[str | None] = mapped_column(
+        String(64),
+        nullable=True,
+        index=True,
+        doc="BitTorrent info-hash extracted from magnet URI",
     )
     requested_by: Mapped[str] = mapped_column(
         String(128),
@@ -179,6 +202,11 @@ class DownloadJob(Base):
             kwargs["created_at"] = utc_now()
         if "updated_at" not in kwargs:
             kwargs["updated_at"] = utc_now()
+        if "info_hash" not in kwargs or kwargs["info_hash"] is None:
+            if "magnet_uri" in kwargs and kwargs["magnet_uri"]:
+                kwargs["info_hash"] = extract_info_hash(kwargs["magnet_uri"])
+        elif isinstance(kwargs.get("info_hash"), str):
+            kwargs["info_hash"] = kwargs["info_hash"].lower()
         super().__init__(**kwargs)
 
     @property
@@ -243,6 +271,7 @@ class DownloadJob(Base):
             "title": self.title,
             "year": self.year,
             "magnet_uri": self.magnet_uri,
+            "info_hash": self.info_hash,
             "requested_by": self.requested_by,
             "state": self.state,
             "progress_pct": self.progress_pct,
