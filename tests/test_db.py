@@ -6,6 +6,7 @@ import tempfile
 from pathlib import Path
 
 import pytest
+from magnetflix.v1 import pipeline_pb2
 from sqlalchemy import select
 from worker.db import (
     Base,
@@ -14,7 +15,6 @@ from worker.db import (
     create_engine,
     verify_wal_mode,
 )
-from worker.magnetflix.v1 import pipeline_pb2
 
 
 @pytest.fixture
@@ -162,9 +162,7 @@ async def test_download_job_state_transitions(temp_db):
         magnet_uri="magnet:?xt=urn:btih:godfather",
         requested_by="charlie",
     )
-    job_failing.transition_to(
-        JobStateEnum.FAILED, error_message="Tracker timed out"
-    )
+    job_failing.transition_to(JobStateEnum.FAILED, error_message="Tracker timed out")
     assert job_failing.state == JobStateEnum.FAILED.value
     assert job_failing.error_message == "Tracker timed out"
     assert job_failing.is_terminal is True

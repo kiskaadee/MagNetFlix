@@ -8,10 +8,9 @@ from enum import Enum
 from typing import Any
 
 from google.protobuf.timestamp_pb2 import Timestamp
+from magnetflix.v1 import pipeline_pb2
 from sqlalchemy import BigInteger, DateTime, Float, Integer, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-
-from worker.magnetflix.v1 import pipeline_pb2
 
 
 class Base(DeclarativeBase):
@@ -249,12 +248,8 @@ class DownloadJob(Base):
             "progress_pct": self.progress_pct,
             "download_rate_bytes": self.download_rate_bytes,
             "error_message": self.error_message,
-            "created_at": (
-                self.created_at.isoformat() if self.created_at else None
-            ),
-            "updated_at": (
-                self.updated_at.isoformat() if self.updated_at else None
-            ),
+            "created_at": (self.created_at.isoformat() if self.created_at else None),
+            "updated_at": (self.updated_at.isoformat() if self.updated_at else None),
             "completed_at": (
                 self.completed_at.isoformat() if self.completed_at else None
             ),
