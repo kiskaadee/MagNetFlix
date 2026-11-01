@@ -1,0 +1,18 @@
+[project]
+name = "magnetflix-contracts"
+version = "0.1.0"
+description = "Protobuf and gRPC schemas and stubs for MagNetFlix"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "grpcio>=1.83.1",
+  "protobuf>=7.36.2",
+]
+
+[build-system]
+requires = ["uv_build>=0.12.5,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "magnetflix"
+module-root = "src"

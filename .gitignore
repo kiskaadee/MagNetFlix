@@ -15,9 +15,6 @@ dist/
 data/
 config/
 
-# Generated docs and proto stubs in services (if re-generated on build)
-docs/api_spec.md
+# Local environment
 .envrc
 .direnv/
-services/bff/src/bff/magnetflix/v1/
-services/worker/src/worker/magnetflix/v1/

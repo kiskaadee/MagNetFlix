@@ -1,7 +1,10 @@
 .PHONY: generate test lint format check
 
 generate:
-	uv run buf generate
+	nix develop --command buf generate
+
+test:
+	uv run pytest
 
 lint:
 	uv run ruff check .

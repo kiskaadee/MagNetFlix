@@ -23,14 +23,15 @@ dev = [
 [tool.pyright]
 venvPath = "."
 venv = ".venv"
-extraPaths = ["services/bff/src", "services/worker/src"]
-include = ["services"]
-exclude = ["**/__pycache__", "services/**/magnetflix/"]
+extraPaths = ["services/bff/src", "services/worker/src", "services/contracts/src"]
+include = ["services/bff", "services/worker", "tests"]
+exclude = ["**/__pycache__"]
+reportIncompatibleVariableOverride = "none"
 
 [tool.ruff]
 line-length = 88
 target-version = "py312"
-extend-exclude = ["services/**/magnetflix/"]
+extend-exclude = ["services/contracts/src/magnetflix/v1/"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I"]
@@ -39,5 +40,5 @@ select = ["E", "F", "I"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
-pythonpath = ["services/bff/src", "services/worker/src"]
+pythonpath = ["services/bff/src", "services/worker/src", "services/contracts/src"]
 
