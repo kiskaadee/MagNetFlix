@@ -31,7 +31,7 @@ MagNetFlix automates media acquisition from user submission to structured librar
 * **Option 1: Direct Exposed Torrent Client with Script Hooks**: Expose Transmission's Web UI directly via reverse proxy and rely on `torrent-done-script.sh` bash scripts for post-processing.
 * **Option 2: Monolithic FastAPI Application**: Run HTTP endpoints, in-process BitTorrent client (`libtorrent`), and media processing inside a single Python process.
 * **Option 3: Decoupled FastAPI BFF + Private gRPC Pipeline Worker + Isolated Transmission Daemon (Dual-Client Compatible)**:
-  * FastAPI acts as a Backend-for-Frontend (BFF), serving the web UI directly on `addmovie.roadtotech.me` behind Traefik/Authelia SSO, and providing dual API route bindings.
+  * FastAPI acts as a Backend-for-Frontend (BFF), serving the web UI directly behind an upstream reverse proxy / OIDC SSO gateway, and providing dual API route bindings.
   * Worker runs as a private gRPC service coordinating an isolated Transmission daemon over an internal Docker bridge.
   * Filesystem operations enforce a two-stage copy-and-swap on the target volume.
 
@@ -44,12 +44,12 @@ Chosen option: **Option 3**, because it provides complete physical separation be
 ### Summary of Architectural Commitments
 
 #### 1. Dual-Client BFF Gateway & Web UI Hosting
-* The FastAPI BFF directly serves the public web UI (adapted from the standalone `app.html` design) as a single-origin application behind Traefik and Authelia forward-auth.
-* The BFF simultaneously acts as the API backend for the companion browser extension (`magnetflix-extension`).
+* The FastAPI BFF directly serves the public web UI (adapted from the standalone `app.html` design) as a single-origin application behind a configurable reverse proxy and SSO/OIDC forward-auth gateway.
+* The BFF simultaneously acts as the API backend for the companion browser extension (`magnetflix-extension`), with configurable `CORS_ALLOWED_ORIGINS` and target host settings so deployments are portable across any homelab or VPS domain.
 * To support both clients without friction:
-  * Dual route bindings are established: `POST /api/v1/downloads` (canonical) and `POST /download` (extension alias).
+  * Dual route bindings are established: `POST /api/v1/downloads` (canonical) and `POST /download` (legacy extension compatibility alias).
   * Inbound Pydantic schemas accept both naming conventions via validation aliases: `magnet` / `magnet_uri` and `imdbid` / `imdb_id`.
-* The BFF extracts authenticated user identity strictly from the Traefik `Remote-User` header. In local development or extension contexts lacking SSO headers, a deterministic fallback (`local_user`) is applied.
+* The BFF extracts authenticated user identity from the configurable upstream proxy header (`AUTH_HEADER_USER`, defaulting to `Remote-User`). When `AUTH_ENABLED=true`, missing or empty identity headers fail closed (`401 Unauthorized`). The `local_user` fallback is restricted strictly to `AUTH_ENABLED=false` for offline local development.
 
 #### 2. Engine & Network Isolation (Defense-in-Depth)
 * Transmission daemon and gRPC Worker run strictly on a private, internal Docker bridge (`magnetflix_internal`).

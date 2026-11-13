@@ -6,25 +6,26 @@ x 2026-10-31 (A) Update pyproject.toml to include tests/ in pyright, remove excl
 x 2026-10-31 (A) Update services/worker/Dockerfile and services/bff/Dockerfile to copy services/contracts, and copy alembic/ into worker image +docker @deploy
 x 2026-10-31 (A) Create Alembic migration 002_add_info_hash_and_partial_unique_index.py adding info_hash column and uq_download_jobs_active_imdb_id index +db @worker
 x 2026-10-31 (A) Update DownloadJob ORM model and write unit tests in tests/test_db.py verifying duplicate active insertion rejection +test @worker
+(A) Normalize Base32 btih info_hash to 40-char lowercase hex in DownloadJob and add partial unique index uq_download_jobs_active_info_hash via Alembic migration 003 +db @worker
 
 # Milestone 2: Pipeline Domain Engine & Filesystem Safety
 (B) Implement Two-Tier Media Sanitizer in services/worker/src/worker/sanitizer.py (hard-fail on symlinks/traversal/executables, ignore .txt/.nfo, sample discard, largest video selector) +sanitizer @worker
 (B) Write comprehensive unit tests in tests/test_sanitizer.py covering allowlist, traversal, sample filtering, and largest video selection +test @worker
 (B) Implement TMDB Client & Token Verifier in services/worker/src/worker/metadata.py (early ingestion resolution via /find/{imdb_id} and post-download token overlap check) +metadata @worker
 (B) Write unit tests with mocked TMDB responses in tests/test_metadata.py verifying match, 404, non-movie rejection, and token overlap +test @worker
-(B) Implement Multi-Track Library Relocator in services/worker/src/worker/relocator.py (format preservation for .srt/.vtt/.ass, language/disambiguation tagging, two-stage atomic directory swap) +relocator @worker
+(B) Implement Multi-Track Library Relocator in services/worker/src/worker/relocator.py (title path sanitization, format preservation for .srt/.vtt/.sub/.ass, language/disambiguation tagging, two-stage atomic directory swap) +relocator @worker
 (B) Write unit tests in tests/test_relocator.py testing destination directory formatting, subtitle moving, and atomic swap cleanup +test @worker
 
 # Milestone 3: Transmission Integration & Worker Coordinator
 (C) Implement Transmission client wrapper in services/worker/src/worker/transmission.py (add_torrent to /data/staging/<job_id>, poll progress, remove_torrent with delete_data) +transmission @worker
 (C) Write unit tests with mocked transmission-rpc client in tests/test_transmission.py +test @worker
-(C) Implement pipeline state machine coordinator in services/worker/src/worker/pipeline.py (linear transitions, 15-min stall timeout, bounded ThreadPoolExecutor offloading, in-memory pub/sub queues) +pipeline @worker
-(C) Implement startup active reconciliation sweep in pipeline.py (auto-fail orphaned jobs, remove Transmission torrents, purge staging disks) +pipeline @worker
+(C) Implement pipeline state machine coordinator in services/worker/src/worker/pipeline.py (linear transitions + QUEUED->FAILED, 15-min zero-delta stall timeout, separate relocation pool, in-memory pub/sub queues) +pipeline @worker
+(C) Implement startup active reconciliation sweep in pipeline.py (auto-fail non-terminal jobs, remove Transmission torrents with bounded startup retry, purge staging disks) +pipeline @worker
 (C) Implement gRPC PipelineServiceServicer in services/worker/src/worker/service.py and entrypoint worker/main.py (SubmitDownload, GetJob, StreamJobStatus, ListJobs) +grpc @worker
 (C) Write integration tests in tests/test_grpc_service.py verifying duplicate rejection, job submission, status querying, and pagination +test @worker
 
 # Milestone 4: FastAPI BFF Gateway, SSE & Web UI
-(D) Implement Pluggable Identity Adapter Middleware in FastAPI BFF (env-driven header extraction with local_user dev fallback) +auth @bff
+(D) Implement Pluggable Identity Adapter Middleware in FastAPI BFF (fail-closed 401 when AUTH_ENABLED=true, configurable AUTH_HEADER_USER/CORS, local_user only when AUTH_ENABLED=false) +auth @bff
 (D) Implement BFF gRPC client wrapper in services/bff/src/bff/grpc_client.py connecting to Worker service +grpc @bff
 (D) Implement REST endpoints in services/bff/src/bff/main.py (dual routes POST /api/v1/downloads and POST /download with Pydantic aliases, GET /api/v1/movies/search TMDB proxy) +api @bff
 (D) Implement Server-Sent Events stream GET /api/v1/movies/events connected to gRPC StreamJobStatus +sse @bff

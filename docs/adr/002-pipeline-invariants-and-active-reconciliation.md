@@ -30,41 +30,46 @@ Following the initial architectural baseline established in [ADR 001](001-pipeli
 - Both `worker` and `bff` depend on `magnetflix-contracts` via `{ workspace = true }`, allowing native `from magnetflix.v1 import pipeline_pb2, pipeline_pb2_grpc` imports.
 - Generated stubs and `docs/api_spec.md` are committed to Git, enabling reproducible offline test and Docker builds.
 
-### 2. Database Partial Unique Index & Info-Hash Column (`DEC-2`)
-- Add an indexed column `info_hash` to `download_jobs`.
-- Add a partial unique index in SQLite:
+### 2. Database Partial Unique Indexes & Normalized Info-Hash (`DEC-2`)
+- Add an indexed column `info_hash` to `download_jobs`, normalized to 40-character lowercase hex at ingestion (converting 32-character Base32 `urn:btih:` hashes).
+- Add partial unique indexes in SQLite:
   ```sql
   CREATE UNIQUE INDEX uq_download_jobs_active_imdb_id
   ON download_jobs (imdb_id)
   WHERE state NOT IN ('COMPLETED', 'FAILED');
+
+  CREATE UNIQUE INDEX uq_download_jobs_active_info_hash
+  ON download_jobs (info_hash)
+  WHERE info_hash IS NOT NULL AND state NOT IN ('COMPLETED', 'FAILED');
   ```
-- Guaranteed engine-level deduplication: concurrent duplicate submissions fail with `IntegrityError`, mapped cleanly to `grpc.StatusCode.ALREADY_EXISTS`.
+- Guaranteed engine-level deduplication: concurrent duplicate submissions (same active `imdb_id` or same active `info_hash`) fail with `IntegrityError`, mapped cleanly to `grpc.StatusCode.ALREADY_EXISTS`.
 
 ### 3. Two-Tier Sanitization Policy (`DEC-3`)
-- **Tier 1 (Hard Security Rejection)**: Immediate job abort to `FAILED` if the payload contains symbolic links (`os.path.islink`), hard links (`st_nlink > 1`), path traversal (`..`), special device nodes, or dangerous extensions (`.exe`, `.bat`, `.cmd`, `.sh`, `.scr`, `.vbs`, `.ps1`, `.lnk`, `.iso`, `.zip`, `.rar`, `.7z`).
-- **Tier 2 (Allowlist Extraction & Safe Discard)**: Extract allowlisted video (`.mkv`, `.mp4`, `.avi`, `.webm`) and subtitles (`.srt`, `.vtt`, `.sub`, `.ass`). Safely ignore benign clutter (`.nfo`, `.txt`, `.jpg`, `.sfv`). Discard samples (`< 100MB` or `"sample"`). Select the single largest remaining video file as the feature film.
+- **Tier 1 (Hard Security Rejection)**: Immediate job abort to `FAILED` if the payload contains symbolic links (`os.path.islink`), hard links (`st_nlink > 1`), path traversal (`..`), special device nodes, or dangerous extensions (case-insensitive: `.exe`, `.bat`, `.cmd`, `.sh`, `.scr`, `.vbs`, `.ps1`, `.lnk`, `.iso`, `.zip`, `.rar`, `.7z`).
+- **Tier 2 (Allowlist Extraction & Safe Discard)**: Extract allowlisted video (`.mkv`, `.mp4`, `.avi`, `.webm`) and subtitles (`.srt`, `.vtt`, `.sub`, `.ass`). Safely ignore unlisted non-dangerous files (such as `.nfo`, `.txt`, `.jpg`, `.sfv`). Discard samples (`< 100 MB` or case-insensitive word-boundary `"sample"` token / `Sample` directory). Select the single largest remaining video file as the feature film.
 
 ### 4. Two-Stage Metadata Lifecycle (`DEC-4`)
 - **Stage 1 (Early Ingestion)**: Query TMDB API `/find/{imdb_id}?external_source=imdb_id` at job submission/queueing time. Verify valid movie entity type; persist `title` and `year` to SQLite immediately. Live UI and SSE streams display movie metadata from second 1.
 - **Stage 2 (Post-Download Token Check)**: Compare cached `(title, year)` tokens against primary video filename completely offline from SQLite without external network dependencies.
 
-### 5. Multi-Track Subtitle Preservation & Two-Stage Atomic Swap (`DEC-5`)
-- Retain native subtitle extensions (`.srt`, `.vtt`, `.ass`).
-- Parse language and forced tags from filenames; append disambiguation indices (`<Title> (<Year>).en.1.srt`) when multiple subtitles share tags to prevent overwrites.
-- Copy verified files across storage boundaries to `/media/movies/.staging_<job_id>/`. Pre-check destination existence, then atomically swap via `os.replace`.
+### 5. Multi-Track Subtitle Preservation, Path Sanitization & Two-Stage Atomic Swap (`DEC-5`)
+- Deterministically sanitize `<Title>` (stripping/replacing path-breaking characters such as `/`, `\`, `:`, `*`, `?`, `"`, `<`, `>`, `|`, and `..`) before constructing directory and file paths.
+- Retain native allowlisted subtitle extensions (`.srt`, `.vtt`, `.sub`, `.ass`).
+- Parse language and forced tags from filenames; omit the language tag if none is detected (`<SanitizedTitle> (<Year>).<ext>`) and append disambiguation indices (`<SanitizedTitle> (<Year>).en.1.srt`) when multiple subtitles share tags to prevent overwrites.
+- Copy verified files across storage boundaries to `/media/movies/.staging_<job_id>/` after checking free disk space. Pre-check destination existence, then atomically swap via `os.replace`.
 
 ### 6. Active Reconciliation & Stalled Timeout (`DEC-6`)
-- On worker startup, query all non-terminal SQLite jobs: transition state to `FAILED`, actively call Transmission RPC `remove_torrent(info_hash, delete_data=True)`, and purge scratch directories `/data/staging/<job_id>/` and `/media/movies/.staging_<job_id>/`.
-- Monitor swarm progress during `DOWNLOADING`: auto-fail jobs with 0 progress for 15 consecutive minutes.
+- On worker startup, query all non-terminal SQLite jobs: transition state to `FAILED`, actively call Transmission RPC `remove_torrent(info_hash, delete_data=True)` (with bounded startup retry/backoff while Transmission initializes), and purge scratch directories `/data/staging/<job_id>/` and `/media/movies/.staging_<job_id>/`.
+- Monitor swarm progress during `DOWNLOADING`: auto-fail jobs with zero progress delta (unchanged downloaded bytes/progress or unresolved metadata) for 15 consecutive minutes.
 
 ### 7. Thread Offloading & In-Memory SSE Fan-Out (`DEC-7`)
-- Dispatch all blocking disk copies (`shutil.copy2`), synchronous RPC calls (`transmission-rpc`), and directory scans to a bounded `ThreadPoolExecutor(max_workers=4)`.
+- Dispatch blocking disk copies (`shutil.copy2`) to a dedicated bounded relocation executor isolated from lightweight `transmission-rpc` calls and directory scans so multi-GB transfers never starve swarm polling.
 - Database sessions are strictly short-lived (committed and closed before long I/O).
-- Broadcast progress and state change events via an internal `asyncio.Queue` pub/sub broker to connected gRPC/SSE streams.
+- Subscribe to the `asyncio.Queue` pub/sub broker *before* reading the initial SQLite snapshot, using bounded per-subscriber queues with latest-state coalescing for connected gRPC/SSE streams.
 
 ### 8. Pluggable Identity Adapter & Server-Side Search (`DEC-8`)
-- FastAPI BFF middleware reads identity headers via configurable environment variables (`AUTH_ENABLED`, `AUTH_HEADER_USER`, `AUTH_HEADER_EMAIL`) with a safe dev fallback (`local_user`).
-- Expose `GET /api/v1/movies/search?q=...` proxying TMDB movie search server-side to eliminate CORS issues and undocumented third-party scraping.
+- FastAPI BFF middleware reads identity headers via configurable environment variables (`AUTH_ENABLED`, `AUTH_HEADER_USER`), failing closed with `401 Unauthorized` when `AUTH_ENABLED=true` and falling back to `local_user` only when `AUTH_ENABLED=false`.
+- Expose `GET /api/v1/movies/search?q=...` proxying TMDB movie search server-side to eliminate CORS issues and undocumented third-party scraping, and support configurable `CORS_ALLOWED_ORIGINS` for browser extension deployments.
 - Mount dual route bindings (`POST /api/v1/downloads` and `POST /download`) with Pydantic aliases (`magnet`/`magnet_uri`, `imdbid`/`imdb_id`).
 
 ---

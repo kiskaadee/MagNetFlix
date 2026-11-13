@@ -2,7 +2,7 @@
 
 ## 1. Mission & Authority
 
-**MagNetFlix** is a self-hosted, automated media acquisition pipeline built around **FastAPI (BFF) + gRPC (Worker) + UV Workspaces + SQLite3 WAL + Transmission + Traefik/Authelia SSO**.
+**MagNetFlix** is a self-hosted, automated media acquisition pipeline built around **FastAPI (BFF) + gRPC (Worker) + UV Workspaces + SQLite3 WAL + Transmission + Reverse Proxy / OIDC SSO**.
 - **Architecture Documentation** (`docs/architecture.md`), **Roadmap** (`docs/roadmap.md`), and **Deployment Specifications** (`docs/deployment.md`) define the authoritative design.
 - **Implementation autonomy ≠ Architectural autonomy.** Do not replace technologies, dependencies, or storage strategies without explicit approval.
 
@@ -23,7 +23,7 @@ The working tree represents the user's active work.
 ## 3. Architecture & Component Contracts (Progressive Triggers)
 
 - **Mandatory Architecture Review:** Always read `docs/architecture.md` before making any changes affecting API routes, gRPC definitions, database models, directory layouts, or component boundaries.
-- **Read `docs/deployment.md`** before altering networking, Traefik routing, Authelia SSO middleware, or Docker volume bindings.
+- **Read `docs/deployment.md`** before altering networking, reverse proxy routing, SSO middleware, or Docker volume bindings.
 - **Stop and Ask:** If an implementation conflicts with documentation or an ambiguous requirement materially affects architecture, stop and ask the user rather than guessing or silently changing the design.
 - **No Speculative Robustness:** Do not add unrequested fallback layers, complex generic abstractions, or future-proofing bloat.
 
@@ -50,7 +50,7 @@ The working tree represents the user's active work.
 - **Isolated Staging:** Downloads must be confined to an isolated temporary scratch path (e.g., `/data/staging/<job_id>`).
 - **File Whitelist Sanitization:**
   - Whitelist: Video (`.mkv`, `.mp4`, `.avi`, `.webm`) and Subtitles (`.srt`, `.vtt`, `.sub`, `.ass`).
-  - Quarantine / Reject: Executables, binaries, scripts, or archives (`.exe`, `.bat`, `.cmd`, `.sh`, `.scr`, `.vbs`, `.lnk`, `.iso`, `.zip`, `.rar`).
+  - Quarantine / Reject: Executables, binaries, scripts, or archives (case-insensitive: `.exe`, `.bat`, `.cmd`, `.sh`, `.scr`, `.vbs`, `.ps1`, `.lnk`, `.iso`, `.zip`, `.rar`, `.7z`).
 - Clean up staging directories immediately after successful file relocation or upon terminal failure.
 
 ---

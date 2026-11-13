@@ -27,13 +27,14 @@ flowchart TD
 - **Dependencies:** None.
 - **Requirements Satisfied:** `REQ-1`, `REQ-2`.
 - **Work Items:**
-  - [ ] `M1.1`: Create `services/contracts` workspace package (`pyproject.toml`, `module-name = "magnetflix"`).
-  - [ ] `M1.2`: Reconfigure `buf.gen.yaml` to output stubs into `services/contracts/src`; generate and track stubs + `docs/api_spec.md` in Git (`DEC-1`).
-  - [ ] `M1.3`: Update dependencies in `services/worker` and `services/bff` to include `magnetflix-contracts = { workspace = true }`.
-  - [ ] `M1.4`: Update `pyproject.toml` to include `tests/` in `pyright`, remove exclusions that masked broken imports, and add `test:` target to `Makefile`.
-  - [ ] `M1.5`: Update `services/worker/Dockerfile` and `services/bff/Dockerfile` to copy `services/contracts`, and include `alembic.ini` and `alembic/` in the Worker image.
-  - [ ] `M1.6`: Create Alembic migration `002_add_info_hash_and_partial_unique_index.py` adding `info_hash` column and `uq_download_jobs_active_imdb_id` index (`DEC-2`).
-  - [ ] `M1.7`: Update `DownloadJob` model and add unit tests in `tests/test_db.py` verifying duplicate active insertion rejection.
+  - [x] `M1.1`: Create `services/contracts` workspace package (`pyproject.toml`, `module-name = "magnetflix"`).
+  - [x] `M1.2`: Reconfigure `buf.gen.yaml` to output stubs into `services/contracts/src`; generate and track stubs + `docs/api_spec.md` in Git (`DEC-1`).
+  - [x] `M1.3`: Update dependencies in `services/worker` and `services/bff` to include `magnetflix-contracts = { workspace = true }`.
+  - [x] `M1.4`: Update `pyproject.toml` to include `tests/` in `pyright`, remove exclusions that masked broken imports, and add `test:` target to `Makefile`.
+  - [x] `M1.5`: Update `services/worker/Dockerfile` and `services/bff/Dockerfile` to copy `services/contracts`, and include `alembic.ini` and `alembic/` in the Worker image.
+  - [x] `M1.6`: Create Alembic migration `002_add_info_hash_and_partial_unique_index.py` adding `info_hash` column and `uq_download_jobs_active_imdb_id` index (`DEC-2`).
+  - [x] `M1.7`: Update `DownloadJob` model and add unit tests in `tests/test_db.py` verifying duplicate active insertion rejection.
+  - [ ] `M1.8` *(Architecture Review Follow-up)*: Normalize Base32 `btih` `info_hash` to 40-char lowercase hex in `DownloadJob` and add partial unique index `uq_download_jobs_active_info_hash` via Alembic migration `003`.
 - **Verifiable Exit Criteria:**
   - `uv run python -c "from magnetflix.v1 import pipeline_pb2, pipeline_pb2_grpc"` succeeds with 0 errors.
   - `uv run ruff check .` and `uv run pyright` pass cleanly across the entire workspace including contracts and tests.
@@ -47,18 +48,19 @@ flowchart TD
 - **Requirements Satisfied:** `REQ-3`, `REQ-4`, `REQ-5`.
 - **Work Items:**
   - [ ] `M2.1`: Implement Media Sanitizer (`services/worker/src/worker/sanitizer.py`) adhering to `DEC-3`:
-    - Hard-fail on symlinks, hard links, `..` traversal, special files, and dangerous extensions (`.exe`, `.bat`, `.sh`, `.iso`, `.zip`).
-    - Safely ignore benign clutter (`.nfo`, `.txt`, `.jpg`, `.sfv`).
-    - Discard samples (`< 100MB` or containing `sample`); select largest primary video and allowlisted subtitles (`.srt`, `.vtt`, `.ass`).
+    - Hard-fail on symlinks, hard links, `..` traversal, special files, and dangerous extensions (case-insensitive: `.exe`, `.bat`, `.cmd`, `.sh`, `.scr`, `.vbs`, `.ps1`, `.lnk`, `.iso`, `.zip`, `.rar`, `.7z`).
+    - Safely ignore unlisted non-dangerous files (such as `.nfo`, `.txt`, `.jpg`, `.sfv`).
+    - Discard samples (`< 100 MB` or case-insensitive word-boundary `"sample"` token / `Sample` directory); select largest primary video and allowlisted subtitles (`.srt`, `.vtt`, `.sub`, `.ass`).
   - [ ] `M2.2`: Write unit tests in `tests/test_sanitizer.py` verifying all security, allowlist, and sample discard rules.
   - [ ] `M2.3`: Implement TMDB Client & Token Verifier (`services/worker/src/worker/metadata.py`) adhering to `DEC-4`:
-    - Early resolution via `GET /find/{imdb_id}?external_source=imdb_id` using `httpx.AsyncClient`.
+    - Early resolution via `GET /find/{imdb_id}?external_source=imdb_id` using `httpx.AsyncClient` with bounded timeouts/retries.
     - Validates IMDb ID format, validates movie entity type, extracts `(title, year)`.
     - Post-download normalized token comparison between cached `(title, year)` and primary video filename.
   - [ ] `M2.4`: Write unit tests in `tests/test_metadata.py` with mocked TMDB HTTP responses (match, 404, non-movie, mismatch).
   - [ ] `M2.5`: Implement Library Relocator (`services/worker/src/worker/relocator.py`) adhering to `DEC-5`:
-    - Multi-track subtitle format preservation (`.srt`, `.vtt`, `.ass`) with language and disambiguation tags.
-    - Two-stage copy-and-swap: copy to `/media/movies/.staging_<job_id>/`, pre-check destination directory existence, and atomically swap via `os.replace`.
+    - Deterministic `<Title>` path sanitization (stripping/replacing `/`, `\`, `:`, `*`, `?`, `"`, `<`, `>`, `|`, `..`).
+    - Multi-track subtitle format preservation (`.srt`, `.vtt`, `.sub`, `.ass`) with language/forced tags, untagged fallback (`<SanitizedTitle> (<Year>).<ext>`), and disambiguation indices.
+    - Free-space pre-check + two-stage copy-and-swap: copy to `/media/movies/.staging_<job_id>/`, pre-check destination directory existence, and atomically swap via `os.replace`.
   - [ ] `M2.6`: Write unit tests in `tests/test_relocator.py` asserting destination file layout and atomic swap error handling.
 - **Verifiable Exit Criteria:**
   - `uv run pytest tests/test_sanitizer.py tests/test_metadata.py tests/test_relocator.py` passes 100%.
@@ -77,13 +79,13 @@ flowchart TD
     - `remove_torrent(info_hash, delete_data=True)` for terminal cleanup.
   - [ ] `M3.2`: Write unit tests in `tests/test_transmission.py` with mocked RPC client.
   - [ ] `M3.3`: Implement Pipeline Coordinator & State Machine (`services/worker/src/worker/pipeline.py`) adhering to `DEC-6` & `DEC-7`:
-    - State progression: `QUEUED` $\rightarrow$ `DOWNLOADING` $\rightarrow$ `SCANNING` $\rightarrow$ `VERIFYING_METADATA` $\rightarrow$ `ORGANIZING` $\rightarrow$ `COMPLETED`.
-    - 15-minute stalled torrent timeout.
-    - Startup crash recovery: query orphaned jobs, fail DB rows, purge staging directories, remove torrents from Transmission.
-    - Dedicated bounded `ThreadPoolExecutor(max_workers=4)` for offloading disk I/O and synchronous Transmission calls.
-    - In-memory `asyncio.Queue` broadcaster for real-time status streaming.
+    - State progression: `QUEUED` $\rightarrow$ `DOWNLOADING` $\rightarrow$ `SCANNING` $\rightarrow$ `VERIFYING_METADATA` $\rightarrow$ `ORGANIZING` $\rightarrow$ `COMPLETED` (with `FAILED` reachable from any active state).
+    - 15-minute zero-progress-delta stalled torrent timeout.
+    - Startup crash recovery: query non-terminal jobs, fail DB rows, purge staging directories, remove torrents from Transmission (with bounded startup retry/backoff).
+    - Dedicated bounded relocation executor isolated from lightweight `transmission-rpc` and scan offloading.
+    - In-memory `asyncio.Queue` broadcaster (subscribe-before-snapshot + bounded per-subscriber coalescing) for real-time status streaming.
   - [ ] `M3.4`: Implement gRPC Server Servicer (`services/worker/src/worker/service.py` & `main.py`) adhering to `pipeline.proto`:
-    - Implements `SubmitDownload`, `GetJob`, `ListJobs`, and `StreamJobStatus`.
+    - Implements `SubmitDownload`, `GetJob`, `ListJobs`, and `StreamJobStatus` plus gRPC health check.
     - Maps application errors to proper gRPC status codes (`ALREADY_EXISTS`, `NOT_FOUND`, `INVALID_ARGUMENT`).
   - [ ] `M3.5`: Write integration tests in `tests/test_pipeline.py` and `tests/test_grpc_service.py`.
 - **Verifiable Exit Criteria:**
@@ -98,7 +100,7 @@ flowchart TD
 - **Requirements Satisfied:** `REQ-9`, `REQ-10`.
 - **Work Items:**
   - [ ] `M4.1`: Implement Pluggable Identity Adapter Middleware in FastAPI (`DEC-8`):
-    - Configurable via `AUTH_ENABLED`, `AUTH_HEADER_USER`, `AUTH_HEADER_EMAIL`, with safe dev fallback (`local_user`).
+    - Configurable via `AUTH_ENABLED`, `AUTH_HEADER_USER`, and `CORS_ALLOWED_ORIGINS`; fails closed with `401` when `AUTH_ENABLED=true` and falls back to `local_user` only when `AUTH_ENABLED=false`.
   - [ ] `M4.2`: Implement BFF gRPC Client Wrapper (`services/bff/src/bff/grpc_client.py`):
     - Channels calls to Worker (`SubmitDownload`, `GetJob`, `ListJobs`, `StreamJobStatus`).
   - [ ] `M4.3`: Implement REST Endpoints & Schemas (`services/bff/src/bff/main.py`):
