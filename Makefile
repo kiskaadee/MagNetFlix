@@ -1,7 +1,11 @@
 .PHONY: generate test lint format check
 
 generate:
-	nix develop --command buf generate
+	@if command -v buf >/dev/null 2>&1; then \
+		buf generate; \
+	else \
+		nix develop --command buf generate; \
+	fi
 
 test:
 	uv run pytest

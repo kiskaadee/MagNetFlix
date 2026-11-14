@@ -51,7 +51,7 @@
             # Automatically sync uv workspace if .venv is missing
             if [ ! -d ".venv" ]; then
               echo "Creating virtual environment and syncing workspace..."
-              uv sync
+              uv sync --all-packages
             fi
           '';
         };

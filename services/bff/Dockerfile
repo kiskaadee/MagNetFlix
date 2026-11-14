@@ -4,8 +4,9 @@ WORKDIR /app
 
 ENV UV_COMPILE_BYTECODE=1
 
-# Copy workspace files
+# Copy workspace manifests and required packages so frozen lockfile resolution succeeds
 COPY pyproject.toml uv.lock ./
+COPY services/worker/pyproject.toml services/worker/README.md ./services/worker/
 COPY services/contracts ./services/contracts
 COPY services/bff ./services/bff
 

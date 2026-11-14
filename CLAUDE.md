@@ -8,7 +8,7 @@
 - Read `docs/deployment.md` before changing Dockerfiles, Compose services, or Traefik/Authelia configs.
 
 ## Build & Tool Execution Commands
-- **Workspace Sync:** `uv sync` (Never use raw `pip`)
+- **Workspace Sync:** `uv sync --all-packages` (Never use raw `pip`)
 - **Workspace Lock:** `uv lock`
 - **Protobuf Generation:** `uv run buf generate` (or `make generate`)
 - **BFF Dev Server:** `uv run --package magnetflix-bff uvicorn bff.main:app --reload --port 8000`

@@ -4,8 +4,9 @@ WORKDIR /app
 
 ENV UV_COMPILE_BYTECODE=1
 
-# Copy workspace files
+# Copy workspace manifests and required packages so frozen lockfile resolution succeeds
 COPY pyproject.toml uv.lock ./
+COPY services/bff/pyproject.toml services/bff/README.md ./services/bff/
 COPY services/contracts ./services/contracts
 COPY services/worker ./services/worker
 
@@ -25,6 +26,7 @@ COPY services/worker/alembic ./alembic
 
 ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONPATH="/app/services/worker/src:/app/services/contracts/src"
+ENV DATABASE_URL="sqlite+aiosqlite:////data/magnetflix.sqlite3"
 
 EXPOSE 50051
 CMD ["python", "-m", "worker.main"]
