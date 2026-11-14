@@ -15,7 +15,11 @@ The working tree represents the user's active work.
 2. **Check for Existing Files:** Before creating any new file, verify whether the file (or a user equivalent) already exists on disk. Never overwrite or re-scaffold user work.
 3. **Never Overwrite Blindly:** Use available file-reading tools. Preserve user comments, links, and conventions. Prefer surgical edits over wholesale overwrites.
 4. **No Destructive Git Commands:** Never run `reset --hard`, `clean -fd`, `restore`, `checkout`, `stash`, `rebase`, or `amend` without explicit permission.
-5. **Live Task Tracking (`todo.txt`):** Keep `todo.txt` synchronized with code reality. When a task or milestone is implemented and verified, mark it as completed (`x YYYY-MM-DD ...`) immediately. Never leave completed work marked as pending.
+5. **Live Planning & Task Synchronization:** Keep planning artifacts synchronized with code reality whenever a task completes or scope shifts across all four places:
+   - **Repository roadmap** (`docs/roadmap.md`) — authoritative milestone sequencing and exit criteria.
+   - **Immediate checklist** (`todo.txt`) — focused strictly on a granular breakdown of the **next immediate deliverable** milestone; mark completed items (`x YYYY-MM-DD ...`) immediately upon verification.
+   - **Gitea issues & milestones** (`kiskaadee/MagNetFlix`) — open/update/close issues and milestones so Gitea remains the authoritative backlog.
+   - **Gitea Kanban board** (`MagNetFlix Pipeline`, Project `#2`) — attach active deliverable issues and milestone epics to keep board status aligned.
 6. **Final Diff Verification:** Before completing work, run `git status` and `git diff` to verify that no unrelated user changes were modified or discarded. Distinguish user changes from agent changes in completion reports.
 
 ---
