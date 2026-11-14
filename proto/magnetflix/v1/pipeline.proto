@@ -7,7 +7,7 @@ import "google/protobuf/timestamp.proto";
 // PipelineService coordinates movie download jobs, safety scans, and library relocation.
 service PipelineService {
   // SubmitDownload enqueues a new movie download job.
-  // Rejects duplicate submissions if an active job for the same IMDb ID exists or if already in library.
+  // Rejects duplicate submissions if an active job for the same IMDb ID or info_hash exists, or if already in library.
   rpc SubmitDownload (SubmitDownloadRequest) returns (SubmitDownloadResponse);
 
   // GetJob retrieves the current status and metadata of a specific job.
@@ -40,7 +40,7 @@ message SubmitDownloadRequest {
   string magnet_uri = 1;
   // IMDb ID of the movie (e.g., "tt1375666").
   string imdb_id = 2;
-  // Username of the user requesting the download (from Authelia Remote-User).
+  // Username of the user requesting the download (from upstream SSO identity header).
   string requested_by = 3;
 }
 

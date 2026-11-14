@@ -24,8 +24,8 @@
 # 1. Enter hermetic dev shell (Nix)
 nix develop
 
-# 2. Or install dependencies with uv workspace
-uv sync
+# 2. Or install dependencies for all workspace packages with uv
+uv sync --all-packages
 
 # 3. Generate protobuf stubs & documentation
 make generate
@@ -49,7 +49,6 @@ make check
 ├── README.md                  # Project landing page
 ├── buf.gen.yaml               # Buf code generation configuration
 ├── buf.yaml                   # Buf module configuration
-├── docker-compose.yml         # Multi-container Compose stack specification
 ├── docs/                      # Authoritative architecture and operations documentation
 │   ├── adr/                   # Architecture Decision Records (ADRs)
 │   ├── history/               # Audit logs and review ledgers

@@ -158,7 +158,7 @@ Request to submit a new movie download.
 | ----- | ---- | ----- | ----------- |
 | magnet_uri | [string](#string) |  | Magnet URI of the torrent to fetch. |
 | imdb_id | [string](#string) |  | IMDb ID of the movie (e.g., &#34;tt1375666&#34;). |
-| requested_by | [string](#string) |  | Username of the user requesting the download (from Authelia Remote-User). |
+| requested_by | [string](#string) |  | Username of the user requesting the download (from upstream SSO identity header). |
 
 
 
@@ -212,7 +212,7 @@ PipelineService coordinates movie download jobs, safety scans, and library reloc
 
 | Method Name | Request Type | Response Type | Description |
 | ----------- | ------------ | ------------- | ------------|
-| SubmitDownload | [SubmitDownloadRequest](#magnetflix-v1-SubmitDownloadRequest) | [SubmitDownloadResponse](#magnetflix-v1-SubmitDownloadResponse) | SubmitDownload enqueues a new movie download job. Rejects duplicate submissions if an active job for the same IMDb ID exists or if already in library. |
+| SubmitDownload | [SubmitDownloadRequest](#magnetflix-v1-SubmitDownloadRequest) | [SubmitDownloadResponse](#magnetflix-v1-SubmitDownloadResponse) | SubmitDownload enqueues a new movie download job. Rejects duplicate submissions if an active job for the same IMDb ID or info_hash exists, or if already in library. |
 | GetJob | [GetJobRequest](#magnetflix-v1-GetJobRequest) | [GetJobResponse](#magnetflix-v1-GetJobResponse) | GetJob retrieves the current status and metadata of a specific job. |
 | StreamJobStatus | [StreamJobStatusRequest](#magnetflix-v1-StreamJobStatusRequest) | [StreamJobStatusResponse](#magnetflix-v1-StreamJobStatusResponse) stream | StreamJobStatus streams real-time status updates. Semantics: Emits an immediate snapshot of matching active jobs upon connection, followed by subsequent state and progress change events. |
 | ListJobs | [ListJobsRequest](#magnetflix-v1-ListJobsRequest) | [ListJobsResponse](#magnetflix-v1-ListJobsResponse) | ListJobs returns a paginated list of download jobs. |

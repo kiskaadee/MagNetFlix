@@ -62,7 +62,7 @@ class SubmitDownloadRequest(_message.Message):
     imdb_id: _builtins.str
     """IMDb ID of the movie (e.g., "tt1375666")."""
     requested_by: _builtins.str
-    """Username of the user requesting the download (from Authelia Remote-User)."""
+    """Username of the user requesting the download (from upstream SSO identity header)."""
     def __init__(
         self,
         *,

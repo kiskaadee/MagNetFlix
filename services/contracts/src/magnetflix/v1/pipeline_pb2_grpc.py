@@ -43,7 +43,7 @@ class PipelineServiceServicer:
 
     def SubmitDownload(self, request, context):
         """SubmitDownload enqueues a new movie download job.
-        Rejects duplicate submissions if an active job for the same IMDb ID exists or if already in library.
+        Rejects duplicate submissions if an active job for the same IMDb ID or info_hash exists, or if already in library.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')

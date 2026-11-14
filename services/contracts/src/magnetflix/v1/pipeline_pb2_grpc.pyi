@@ -35,7 +35,7 @@ class PipelineServiceStub:
     def __new__(cls, channel: _aio.Channel) -> PipelineServiceAsyncStub: ...
     SubmitDownload: _grpc.UnaryUnaryMultiCallable[_pipeline_pb2.SubmitDownloadRequest, _pipeline_pb2.SubmitDownloadResponse]
     """SubmitDownload enqueues a new movie download job.
-    Rejects duplicate submissions if an active job for the same IMDb ID exists or if already in library.
+    Rejects duplicate submissions if an active job for the same IMDb ID or info_hash exists, or if already in library.
     """
     GetJob: _grpc.UnaryUnaryMultiCallable[_pipeline_pb2.GetJobRequest, _pipeline_pb2.GetJobResponse]
     """GetJob retrieves the current status and metadata of a specific job."""
@@ -54,7 +54,7 @@ class PipelineServiceAsyncStub(PipelineServiceStub):
     def __init__(self, channel: _aio.Channel) -> None: ...
     SubmitDownload: _aio.UnaryUnaryMultiCallable[_pipeline_pb2.SubmitDownloadRequest, _pipeline_pb2.SubmitDownloadResponse]  # type: ignore[assignment]
     """SubmitDownload enqueues a new movie download job.
-    Rejects duplicate submissions if an active job for the same IMDb ID exists or if already in library.
+    Rejects duplicate submissions if an active job for the same IMDb ID or info_hash exists, or if already in library.
     """
     GetJob: _aio.UnaryUnaryMultiCallable[_pipeline_pb2.GetJobRequest, _pipeline_pb2.GetJobResponse]  # type: ignore[assignment]
     """GetJob retrieves the current status and metadata of a specific job."""
@@ -76,7 +76,7 @@ class PipelineServiceServicer(metaclass=_abc_1.ABCMeta):
         context: _ServicerContext,
     ) -> _typing.Union[_pipeline_pb2.SubmitDownloadResponse, _abc.Awaitable[_pipeline_pb2.SubmitDownloadResponse]]:
         """SubmitDownload enqueues a new movie download job.
-        Rejects duplicate submissions if an active job for the same IMDb ID exists or if already in library.
+        Rejects duplicate submissions if an active job for the same IMDb ID or info_hash exists, or if already in library.
         """
 
     @_abc_1.abstractmethod

@@ -140,7 +140,7 @@ class DownloadJob(Base):
         String(128),
         nullable=False,
         index=True,
-        doc="Authenticated user from Remote-User SSO header",
+        doc="Authenticated user from upstream SSO identity header",
     )
     state: Mapped[str] = mapped_column(
         String(32),
